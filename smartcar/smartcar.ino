@@ -66,9 +66,10 @@ int moveStep = 0;
 
 int carSpeed = 200;         // 0 - 255.
 int steeringSpeed = 150;
-int speedAdjustment = -10;
+int speedAdjustment = -20;
 
 int carSpeeds[][10] = {
+  {0,0,0,0,0,0,0,0,0,0},
   {1,0,0,0,0,0,0,0,0,0},
   {1,0,0,0,0,1,0,0,0,0},
   {1,0,0,1,0,0,1,0,0,0},
@@ -82,6 +83,7 @@ int carSpeeds[][10] = {
 };
 
 int steeringSpeeds[][10] = {
+  {0,0,0,0,0,0,0,0,0,0},
   {1,0,0,0,0,0,0,0,0,0},
   {1,0,0,0,0,1,0,0,0,0},
   {1,0,0,1,0,0,1,0,0,0},
@@ -136,15 +138,15 @@ void loop()
     int steeringIndex = RemoteXY.slider_2/10;
     if(speedIndex>0) {
       int multiplier = carSpeeds[speedIndex][moveStep];
-      int speedRight = multiplier*carSpeed;
+      int speedRight = multiplier*(carSpeed+speedAdjustment);
       int speedLeft = multiplier*carSpeed;
       if(steeringIndex>0) {
-        if(steeringSpeeds[steeringIndex][moveStep]!=0) {
-          speedRight = 0;
+        if(speedRight != 0) {
+          speedRight = steeringSpeed;
         }
       }else if(steeringIndex<0) {
-        if(steeringSpeeds[steeringIndex][moveStep]!=0) {
-          speedLeft = 0;
+        if(speedLeft != 0) {
+          speedLeft = steeringSpeed;
         }
       }
       analogWrite(IN_1, 0);
@@ -153,24 +155,28 @@ void loop()
       analogWrite(IN_4, speedLeft);
     }else if(speedIndex<0) {
       int multiplier = carSpeeds[-speedIndex][moveStep];
-      int speedRight = multiplier*carSpeed;
+      int speedRight = multiplier*(carSpeed+speedAdjustment);
       int speedLeft = multiplier*carSpeed;
       if(steeringIndex>0) {
-        if(steeringSpeeds[steeringIndex][moveStep]!=0) {
-          speedRight = 0;
+        if(speedRight != 0) {
+          speedRight = steeringSpeed;
         }
       }else if(steeringIndex<0) {
-        if(steeringSpeeds[steeringIndex][moveStep]!=0) {
-          speedLeft = 0;
+        if(speedLeft != 0) {
+          speedLeft = steeringSpeed;
         }
-      }
+      }  
       analogWrite(IN_1, speedRight);
       analogWrite(IN_2, 0);
       analogWrite(IN_3, speedLeft);
       analogWrite(IN_4, 0);
     }else if(steeringIndex>0) {
       int steering = steeringSpeeds[steeringIndex][moveStep]*steeringSpeed;
-      analogWrite(IN_1, steering);
+      if(steeringIndex>5) {
+        analogWrite(IN_1, steering);
+      }else {
+        analogWrite(IN_1, 0);
+      }
       analogWrite(IN_2, 0);
       analogWrite(IN_3, 0);
       analogWrite(IN_4, steering);
@@ -178,7 +184,11 @@ void loop()
       int steering = steeringSpeeds[-steeringIndex][moveStep]*steeringSpeed;
       analogWrite(IN_1, 0);
       analogWrite(IN_2, steering);
-      analogWrite(IN_3, steering);
+      if(steeringIndex<-5) {
+        analogWrite(IN_3, steering);
+      }else {
+        analogWrite(IN_3, 0);
+      }
       analogWrite(IN_4, 0);
     }else {
       stopRobot();
