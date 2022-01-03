@@ -60,41 +60,25 @@ struct {
 noDelay debugTime(1000);
 noDelay remoteCommandTime(30);
 noDelay collisionCheckTime(100);
-noDelay carMoveTime(10);
+noDelay carMoveTime(20);
 int moveStep = 0;
 
 
-int carSpeed = 200;         // 0 - 255.
-int steeringSpeed = 150;
-int speedAdjustment = -20;
 
-int carSpeeds[][10] = {
-  {0,0,0,0,0,0,0,0,0,0},
-  {1,0,0,0,0,0,0,0,0,0},
-  {1,0,0,0,0,1,0,0,0,0},
-  {1,0,0,1,0,0,1,0,0,0},
-  {1,0,1,0,0,1,0,1,0,0},
-  {1,0,1,0,1,0,1,0,1,0},
-  {1,1,0,1,0,1,1,0,1,0},
-  {1,1,0,1,1,1,0,1,1,0},
-  {1,1,1,1,0,1,1,1,1,0},
-  {1,1,1,1,1,1,1,1,1,0},
-  {1,1,1,1,1,1,1,1,1,1}
+int carSpeeds[][5] = {
+  {0, 0,0,0,0},
+  {10, 1,0,0,0},
+  {20, 1,0,0,0},
+  {30, 1,0,0,0},
+  {10, 1,1,0,0},
+  {20, 1,1,0,0},
+  {30, 1,1,0,0},
+  {10, 1,1,1,0},
+  {20, 1,1,1,0},
+  {30, 1,1,1,0},
+  {10, 1,1,1,1}
 };
 
-int steeringSpeeds[][10] = {
-  {0,0,0,0,0,0,0,0,0,0},
-  {1,0,0,0,0,0,0,0,0,0},
-  {1,0,0,0,0,1,0,0,0,0},
-  {1,0,0,1,0,0,1,0,0,0},
-  {1,0,1,0,0,1,0,1,0,0},
-  {1,0,1,0,1,0,1,0,1,0},
-  {1,1,0,1,0,1,1,0,1,0},
-  {1,1,0,1,1,1,0,1,1,0},
-  {1,1,1,1,0,1,1,1,1,0},
-  {1,1,1,1,1,1,1,1,1,0},
-  {1,1,1,1,1,1,1,1,1,1}
-};
 
 Servo myservo;  // create servo object to control a servo
 // twelve servo objects can be created on most boards
@@ -132,94 +116,108 @@ void loop()
     Serial.print(", Styrning: ");
     Serial.println(RemoteXY.slider_2);
    }
-
   if(carMoveTime.update()) {
-    int speedIndex = RemoteXY.slider_1/10;
-    int steeringIndex = RemoteXY.slider_2/10;
+    int speedIndex = (abs(RemoteXY.slider_1)+9)/10;
     if(speedIndex>0) {
-      int multiplier = carSpeeds[speedIndex][moveStep];
-      int speedRight = multiplier*(carSpeed+speedAdjustment);
-      int speedLeft = multiplier*carSpeed;
-      if(steeringIndex>0) {
-        if(speedRight != 0) {
-          speedRight = steeringSpeed;
-        }
-      }else if(steeringIndex<0) {
-        if(speedLeft != 0) {
-          speedLeft = steeringSpeed;
-        }
+      int speed = carSpeeds[speedIndex][0];
+      int multiplier = carSpeeds[speedIndex][moveStep+1];
+      int rightSpeed = speed;
+      int leftSpeed = speed;
+      if(RemoteXY.slider_2>0) {
+        rightSpeed = rightSpeed-rightSpeed*abs(RemoteXY.slider_2)/100;
+        Serial.print("Forward and steering right: ");
+        Serial.print(leftSpeed);
+        Serial.print(", ");
+        Serial.println(rightSpeed);
+      }else if(RemoteXY.slider_2<0) {
+        leftSpeed = leftSpeed-leftSpeed*abs(RemoteXY.slider_2)/100;
+        Serial.print("Forward and steering left: ");
+        Serial.print(leftSpeed);
+        Serial.print(", ");
+        Serial.println(rightSpeed);
       }
-      analogWrite(IN_1, 0);
-      analogWrite(IN_2, speedRight);
-      analogWrite(IN_3, 0);
-      analogWrite(IN_4, speedLeft);
-    }else if(speedIndex<0) {
-      int multiplier = carSpeeds[-speedIndex][moveStep];
-      int speedRight = multiplier*(carSpeed+speedAdjustment);
-      int speedLeft = multiplier*carSpeed;
-      if(steeringIndex>0) {
-        if(speedRight != 0) {
-          speedRight = steeringSpeed;
-        }
-      }else if(steeringIndex<0) {
-        if(speedLeft != 0) {
-          speedLeft = steeringSpeed;
-        }
-      }  
-      analogWrite(IN_1, speedRight);
-      analogWrite(IN_2, 0);
-      analogWrite(IN_3, speedLeft);
-      analogWrite(IN_4, 0);
-    }else if(steeringIndex>0) {
-      int steering = steeringSpeeds[steeringIndex][moveStep]*steeringSpeed;
-      if(steeringIndex>5) {
-        analogWrite(IN_1, steering);
+      int speedRight = multiplier*rightSpeed;
+      int speedLeft = multiplier*leftSpeed;
+      if(RemoteXY.slider_1>0) {        
+        setRightSpeed(speedRight);
+        setLeftSpeed(speedLeft);
       }else {
-        analogWrite(IN_1, 0);
+        setRightSpeed(-speedRight);
+        setLeftSpeed(-speedLeft);
       }
-      analogWrite(IN_2, 0);
-      analogWrite(IN_3, 0);
-      analogWrite(IN_4, steering);
-    }else if(steeringIndex<0) {
-      int steering = steeringSpeeds[-steeringIndex][moveStep]*steeringSpeed;
-      analogWrite(IN_1, 0);
-      analogWrite(IN_2, steering);
-      if(steeringIndex<-5) {
-        analogWrite(IN_3, steering);
+    }else if(RemoteXY.slider_2!=0) {
+      int steerIndex = (abs(RemoteXY.slider_2)+9)/10;
+      int speed = carSpeeds[steerIndex][0];
+      int multiplier = carSpeeds[steerIndex][moveStep+1];
+      int steeringSpeed = multiplier*speed;
+      if(RemoteXY.slider_2>0) {   
+        Serial.println("Stering right on place");     
+        setRightSpeed(-steeringSpeed);
+        setLeftSpeed(steeringSpeed);
       }else {
-        analogWrite(IN_3, 0);
+        Serial.println("Stering left on place");     
+        setRightSpeed(steeringSpeed);
+        setLeftSpeed(-steeringSpeed);
       }
-      analogWrite(IN_4, 0);
     }else {
-      stopRobot();
+      setRightSpeed(0);
+      setLeftSpeed(0);
     }
+        
     moveStep++;
-    if(moveStep>9) {
+    if(moveStep>3) {
       moveStep = 0;
     }
   }
-  /*
-  if(remoteCommandTime.update()) {
-     if (RemoteXY.slider_1>0) {
-       goAhead();
-     }else if(RemoteXY.slider_1<0) {
-       goBack();
-     }
-  
-  */
+
   if(collisionCheckTime.update()) {
     int distance = GetDistance();
     if(distance<20) {
-      goBack(carSpeed);
+      setRightSpeed(-20);
+      setLeftSpeed(-20);
     }else if(RemoteXY.slider_1==0 && RemoteXY.slider_2==0) {
-      stopRobot();
+      setRightSpeed(0);
+      setLeftSpeed(0);
     }
   }
   
    if (RemoteXY.connect_flag == 0) {
-    stopRobot();
+      setRightSpeed(0);
+      setLeftSpeed(0);
    }
 
+}
+
+void setLeftSpeed(int speed) {
+  int minSpeed = 63;
+  int maxSpeed = 245;
+  int adjustedSpeed = minSpeed+(maxSpeed-minSpeed)*abs(speed)/100;
+  if(speed>0) {
+    analogWrite(IN_3,0);
+    analogWrite(IN_4, adjustedSpeed);
+  }else if(speed<0) {
+    analogWrite(IN_3, adjustedSpeed);
+    analogWrite(IN_4, 0);
+  }else if(speed==0) {
+    analogWrite(IN_3, 0);
+    analogWrite(IN_4, 0);
+  }
+}
+
+void setRightSpeed(int speed) {
+  int minSpeed = 55;
+  int maxSpeed = 255;
+  int adjustedSpeed = minSpeed+(maxSpeed-minSpeed)*abs(speed)/100;
+  if(speed>0) {
+    analogWrite(IN_1,0);
+    analogWrite(IN_2, adjustedSpeed);
+  }else if(speed<0) {
+    analogWrite(IN_1, adjustedSpeed);
+    analogWrite(IN_2, 0);
+  }else if(speed==0) {
+    analogWrite(IN_1, 0);
+    analogWrite(IN_2, 0);
+  }
 }
 
 void goAhead(int speed){ 
@@ -281,8 +279,8 @@ float GetDistance()
   digitalWrite(Trig, LOW);
   
   distance = pulseIn(Echo, HIGH) / 58.00;
-  Serial.print("distance = ");
-  Serial.println(distance);
+  //Serial.print("distance = ");
+  //Serial.println(distance);
   
   return distance;
 }
@@ -292,6 +290,7 @@ float GetDistance()
 * Function: Obstacle avoidance
 * Parameter: set_dis sets the obstacle avoidance distance
 */
+/*
 void avoidance(int set_dis)
 {
     int angle;
@@ -360,3 +359,4 @@ void avoidance(int set_dis)
         } 
     }
 }
+*/
